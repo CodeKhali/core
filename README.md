@@ -832,7 +832,52 @@ See [`docs/videos.md`](docs/videos.md) for recorded video links once they're pub
 
 ---
 
-## License
+## Amount Precision and Formatting
+
+Stellar amounts are stored as 64-bit integers (stroops). One XLM equals 10,000,000 stroops. JavaScript `number` cannot safely represent the full stroop range; Sorokit Core uses `bigint` and string representations to keep every calculation exact.
+
+```ts
+import {
+  validateAmount,
+  validateStroop,
+  xlmToStroops,
+  stroopsToXlm,
+  addAmounts,
+  subtractAmounts,
+  multiplyAmount,
+  divideAmount,
+  formatAmount,
+} from "sorokit-core";
+
+// Validation — rejects >7 decimal places, zero, negative, and amounts above max
+validateAmount("100.1234567");   // ok → "100.1234567"
+validateAmount("100.12345678");  // error: more than 7 decimal places
+
+// Conversion — exact, lossless round-trip
+xlmToStroops("100.5");           // ok → "1005000000"
+stroopsToXlm("1005000000");      // ok → "100.5"
+
+// Arithmetic — bigint-based, safe for amounts beyond Number.MAX_SAFE_INTEGER
+addAmounts("900000000", "900000000");   // "1800000000"
+subtractAmounts("100.5", "0.5");        // "100"
+multiplyAmount("100", "1.5");           // "150"
+divideAmount("100", "3");               // "33.3333333" (half-up at 7th decimal)
+
+// Display formatting — never routes through JS number, so exact for any value
+formatAmount("1000000000", { showSymbol: true });
+// ok → "100.00 XLM"
+
+formatAmount("1000000000", { locale: "de-DE" });
+// ok → "100,00"
+
+// Soroban token with 6 decimals
+formatAmount("100000000", { decimals: 6, showSymbol: true, symbol: "USDC" });
+// ok → "100.00 USDC"
+```
+
+Always pass amounts as strings or `bigint`. Do not use `+` on `number` types for amounts that may exceed `Number.MAX_SAFE_INTEGER` (~900k XLM expressed in stroops). See [docs/amount-precision.md](docs/amount-precision.md) for a full reference on representations, rounding constraints, and safe patterns.
+
+
 
 [MIT](LICENSE)
 
@@ -890,3 +935,7 @@ await client.soroban.execute(signedXdr, undefined, undefined, {
   bypassMainnetSafety: true,
 });
 ```
+
+## License
+
+[MIT](LICENSE)
